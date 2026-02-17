@@ -27,10 +27,14 @@ namespace Tools
         private void CreateFsm()
         {
             Settings.Fsm = new FSM();
-            Settings.Fsm.Add(new IsIdle());
-            Settings.Fsm.Add(new IsAccelerating());
-            Settings.Fsm.Add(new IsSpinning());
-            Settings.Fsm.Add(new IsDecelerating());
+            Settings.Fsm.Add(new IdleState());
+            Settings.Fsm.Add(new AcceleratingState());
+            Settings.Fsm.Add(new SpinningState());
+            Settings.Fsm.Add(new DeceleratingState());
+            
+            // Set up event listeners for FSM transitions
+            Model.EventManager.AddAction("StartSpin", () => Settings.Fsm.Change("Accelerating"));
+            Model.EventManager.AddAction("StopSpin", () => Settings.Fsm.Change("Decelerating"));
         }
         
         [OnUpdate]
@@ -43,7 +47,7 @@ namespace Tools
         private void Initiate()
         {
             particles.Stop();
-            Settings.Fsm.Start("IsIdle");
+            Settings.Fsm.Start("Idle");
             Model.Set("SpinningSpeed", 0f);
             Model.Set("StartButtonEnabled", true);
             Model.Set("StopButtonEnabled", false);
@@ -80,20 +84,21 @@ namespace Tools
         
         private void OnTargetSpeedReached()
         {
-            if (Settings.Fsm.CurrentStateName == "IsAccelerating")
+            string currentState = Settings.Fsm.CurrentStateName;
+            if (currentState == "Accelerating")
             {
-                Settings.Fsm.Change("IsSpinning");
+                Settings.Fsm.Change("Spinning");
             }
-            else if (Settings.Fsm.CurrentStateName == "IsDecelerating")
+            else if (currentState == "Decelerating")
             {
-                Settings.Fsm.Change("IsIdle");
+                Settings.Fsm.Change("Idle");
             }
         }
         
         [Bind("OnSpeedChanged")]
         public void OnSpeedChanged(float value)
         {
-            var accelerationTime = Settings.Fsm.CurrentStateName == "IsAccelerating"
+            var accelerationTime = Settings.Fsm.CurrentStateName == "Accelerating"
                 ? Model.Get<float>("AccelerationTime")
                 : Model.Get<float>("DecelerationTime");
             this.Path = new CPath()
@@ -104,9 +109,9 @@ namespace Tools
                     if (f <= minimalStoppingSpeed && Vector2.Distance(viewport.pivot, selectedItem.pivot) < .01f)
                         targetSpinSpeed = 0;
                 })
-                .EasingLinear(.5f,0,.5f, (f) =>
+                .EasingLinear(2,0,1, (f) =>
                 {
-                    if (Settings.Fsm.CurrentStateName != "IsDecelerating" || 
+                    if (Settings.Fsm.CurrentStateName != "Decelerating" || 
                         !(targetSpinSpeed <= minimalStoppingSpeed)) 
                         return;
                     RectTransform closestItem = GetClosestItemToViewportCenter();
@@ -117,7 +122,6 @@ namespace Tools
                     float verticalDistance = viewportCenterWorld.y - itemCenterWorld.y;
                             
                     bool isPerfectlyAligned = Mathf.Abs(verticalDistance) < 0.01f;
-                    Debug.Log($"Closest item: {closestItem.name}, Vertical distance: {verticalDistance:F3}, Perfectly aligned: {isPerfectlyAligned}");
                             
                     if (!isPerfectlyAligned)
                         content.localPosition += new Vector3(0, verticalDistance * f);
@@ -129,7 +133,7 @@ namespace Tools
                 })
                 .Action(() =>
                 {
-                    if (Settings.Fsm.CurrentStateName == "IsDecelerating") PrizeVFX();
+                    if (Settings.Fsm.CurrentStateName == "Decelerating") PrizeVFX();
                 })
                 .Wait(1)
                 .Action(() => {
@@ -207,76 +211,48 @@ namespace Tools
     }
     
 
-    [State("IsSpinning")]
-    public class IsSpinning : FSMState
+    [State("Spinning")]
+    public class SpinningState : FSMState
     {
         [Enter]
         public void Enter()
         {
-            Debug.Log("Enter IsSpinning");
             Model.Set("StartButtonEnabled", false);
             Model.Set("StopButtonEnabled", true);
         }
-
-        [Exit]
-        public void Exit()
-        {
-            Debug.Log("Exit IsSpinning");
-        }
     }
 
-    [State("IsIdle")]
-    public class IsIdle: FSMState
+    [State("Idle")]
+    public class IdleState: FSMState
     {
         [Enter]
         public void Enter()
         {
-            Debug.Log("Enter IsIdle");
             Model.Set("SpinningSpeed", 0f);
             Model.Set("StartButtonEnabled", true);
             Model.Set("StopButtonEnabled", false);
         }
-
-        [Exit]
-        public void Exit()
-        {
-            Debug.Log("Exit IsIdle");
-        }
     }
 
-    [State("IsAccelerating")]
-    public class IsAccelerating : FSMState
+    [State("Accelerating")]
+    public class AcceleratingState : FSMState
     {
         [Enter]
         public void Enter()
         {
-            Debug.Log("Enter IsAccelerating");
             Model.Set("StartButtonEnabled", false);
             Model.Set("StopButtonEnabled", false);
-        }
-
-        [Exit]
-        public void Exit()
-        {
-            Debug.Log("Exit IsAccelerating");
         }
     }
     
-    [State("IsDecelerating")]
-    public class IsDecelerating : FSMState
+    [State("Decelerating")]
+    public class DeceleratingState : FSMState
     {
         [Enter]
         public void Enter()
         {
-            Debug.Log("Enter IsDecelerating");
             Model.Set("StartButtonEnabled", false);
             Model.Set("StopButtonEnabled", false);
-        }
-
-        [Exit]
-        public void Exit()
-        {
-            Debug.Log("Exit IsDecelerating");
         }
     }
 }

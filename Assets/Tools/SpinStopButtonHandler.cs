@@ -18,7 +18,7 @@ public class SpinStopButtonHandler : MonoBehaviourExtBind
         
         void OnClick()
         {
-            Settings.Fsm.Change("IsDecelerating");
+            Model.EventManager.Invoke("StopSpin");
             Model.Set("Speed", 0);
         }
     }

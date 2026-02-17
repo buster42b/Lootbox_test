@@ -19,7 +19,7 @@ public class SpinStartButtonHandler : MonoBehaviourExtBind
         
         void OnClick()
         {
-            Settings.Fsm.Change("IsAccelerating");
+            Model.EventManager.Invoke("StartSpin");
             Model.Set("Speed", targetSpinSpeed);
         }
     }
