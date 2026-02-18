@@ -106,10 +106,12 @@ namespace Tools
                     targetSpinSpeed = f;
                     Model.Set("SpinningSpeed", f);
                     selectedItem = GetClosestItemToViewportCenter();
-                    if (f <= minimalStoppingSpeed && Vector2.Distance(viewport.pivot, selectedItem.pivot) < .01f)
+                    if (f <= minimalStoppingSpeed && Vector2.Distance(viewport.rect.center, selectedItem.rect.center) < .01f)
+                    {
                         targetSpinSpeed = 0;
+                    }
                 })
-                .EasingLinear(2,0,1, (f) =>
+                .EasingLinear(3,0,3, (f) =>
                 {
                     if (Settings.Fsm.CurrentStateName != "Decelerating" || 
                         !(targetSpinSpeed <= minimalStoppingSpeed)) 
